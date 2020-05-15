@@ -1,22 +1,18 @@
 import json
 import follow
-import download
+import download, os.path
 from utils import Database
+from utils import Settings
 from utils import CmdGui as gui
-
 
 def start_modules():
     gui.header("Series Downloader", margin=20)
 
     gui.status_msg("Loading settins...")
-    Settings_File = "config.json"
-    with open(Settings_File) as file:
-        Settings_File = json.load(file)
+    Settings(os.path.dirname(os.path.realpath(__file__)))
 
     gui.status_msg("Loading database...",newLine=True)
-    Database(Settings_File["database"]["file"])
-
-
+    Database(Settings.getInstance().database_file)
 
 
 def main_menu():

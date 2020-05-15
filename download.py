@@ -3,7 +3,8 @@ from utils import CmdGui as gui
 from datetime import datetime
 from utils import TorrentAPI, Status
 from utils import TPB
-import re, time, sys
+from utils import Settings
+import re, time, sys, os
 from threading import Thread, Lock
 
 total_process = 0
@@ -15,7 +16,10 @@ def main():
     global_vars_mutext = Lock()
     stdout_mutext = Lock()
 
-    uTorrent = TorrentAPI('http://127.0.0.1:28066/gui', 'admin', 'admin')
+    uTorrent = TorrentAPI(
+        Settings.getInstance().utorrent_gui_url,
+        Settings.getInstance().utorrent_gui_user,
+        Settings.getInstance().utorrent_gui_password)
 
     if not uTorrent.is_authenticated():
         gui.pause()
@@ -162,6 +166,11 @@ class Episode_Downloader(Thread):
     def _update_epidode_start_status(self):
         self.episode.status = Episode.STATUS_FAIL
 
+    def _move_file(self):
+        for root, dirs, files in os.walk(self.torrent.availability):
+            for file in files:
+                if file.endswith(('.mkv', '.avi')):
+                    os.rename(os.path.realpath(file),)
         
 class Episode_FileManager(Thread):
     def __init__(self,episode,):

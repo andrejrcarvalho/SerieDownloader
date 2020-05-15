@@ -215,7 +215,3 @@ class Status:
 
     def are(self, status):
         return status in self.status_list
-
-class File:
-    def __init__(self,fileJson):
-        pass

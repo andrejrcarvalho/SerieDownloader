@@ -123,6 +123,7 @@ pip-selfcheck.json
 ### VisualStudioCode ###
 .vscode/*
 !.vscode/tasks.json
+!.vscode/settings.json
 !.vscode/launch.json
 !.vscode/extensions.json
 
@@ -133,3 +134,5 @@ pip-selfcheck.json
 # End of https://www.gitignore.io/api/python,virtualenv,visualstudiocode
 
 **/*.sqlite3
+*.conf
+!*.example.conf
