@@ -24,7 +24,9 @@ class TorrentAPI(object):
                 xtree = html.fromstring(response.content)
                 token = xtree.xpath('//*[@id="token"]/text()')[0]
                 guid = response.cookies['GUID']
-            cookies = dict(GUID=guid)
+                cookies = dict(GUID=guid)
+            else:
+                print("Cant't get the token from uTorrent:\n\t HTTP error code %d"%response.status_code)
         except requests.ConnectionError as error:
             print(
                 F"Error while connecting to uTorrent API:\n\t{error}\nCheck if the uTorrent is started and the uri and access data are corret!", file=sys.stderr)
@@ -107,6 +109,7 @@ class Torrent(TorrentAPI):
         self.availability = json[16]
         self.queue_order = json[17]
         self.remaining = json[18]
+        self.download_folder = json[26]
 
     def start(self):
         return self._action('start')

@@ -32,7 +32,7 @@ class Serie:
     def name(self, value):
         if not isinstance(value, str):
             raise ValueError("Invalid given value Episode<name>")
-        self._name = value
+        self._name = value.replace('"','')
 
     @property
     def number_seasons(self):

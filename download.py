@@ -4,7 +4,12 @@ from datetime import datetime
 from utils import TorrentAPI, Status
 from utils import TPB
 from utils import Settings
-import re, time, sys, os
+import re
+import time
+import sys
+import os
+import pathlib
+import shutil
 from threading import Thread, Lock
 
 total_process = 0
@@ -22,6 +27,7 @@ def main():
         Settings.getInstance().utorrent_gui_password)
 
     if not uTorrent.is_authenticated():
+        print("Can't connect to torrent gui")
         gui.pause()
         return
 
@@ -80,6 +86,8 @@ class Episode_Downloader(Thread):
         self._remove_torrent()
 
         self._update_epidode_done_status()
+
+        self._move_file()
 
     def join(self):
         self.episode.save()
@@ -167,11 +175,28 @@ class Episode_Downloader(Thread):
         self.episode.status = Episode.STATUS_FAIL
 
     def _move_file(self):
-        for root, dirs, files in os.walk(self.torrent.availability):
+        season_name = "Season {:02d}".format(self.episode.season_number)
+        folder = os.path.join(
+            Settings.getInstance().download_folder,
+            self.episode.serie.name,
+            season_name
+            )
+        
+        if not os.path.isdir(folder):
+            pathlib.Path(
+                folder).mkdir(parents=True, exist_ok=True)
+
+        for root, dirs, files in os.walk(self.torrent.download_folder):
             for file in files:
                 if file.endswith(('.mkv', '.avi')):
-                    os.rename(os.path.realpath(file),)
+                    filename, file_extension = os.path.splitext(file)
+                    filename = "S{:02d}E{:02d} - {:s}{:s}".format(
+                        self.episode.season_number,
+                        self.episode.number,
+                        self.episode.name,
+                        file_extension)
+                    os.rename(os.path.join(root, file),
+                              os.path.join(folder, filename))
+                    shutil.rmtree(self.torrent.download_folder)
+                    return
         
-class Episode_FileManager(Thread):
-    def __init__(self,episode,):
-        Thread.__init__(self)
