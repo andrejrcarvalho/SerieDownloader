@@ -1,9 +1,9 @@
-from models import Episode, Serie
-from utils import CmdGui as gui
+from utils.models import Episode, Serie
+import utils.cmd_gui as gui
 from datetime import datetime
-from utils import TorrentAPI, Status
-from utils import TPB
-from utils import Settings
+from utils.torrent import TorrentAPI, Status, TorrentAction
+from utils.tpb import TPB
+from utils.settings import Settings
 import re
 import time
 import sys
@@ -17,7 +17,6 @@ total_process = 0
 
 def main():
     threads_list = list()
-    uTorrent_mutex = Lock()
     global_vars_mutext = Lock()
     stdout_mutext = Lock()
 
@@ -31,13 +30,15 @@ def main():
         gui.pause()
         return
 
+    uTorrentThread = UTorrentThread(uTorrent)
+
     global total_process
     total_process = 0
 
     for e in Episode.getList([Episode.STATUS_PENDING, Episode.STATUS_FAIL]):
         if (e.serie.status == Serie.STATUS_ENABLE and e.release_date <= datetime.now()):
             thread = Episode_Downloader(
-                e, uTorrent, uTorrent_mutex, global_vars_mutext, stdout_mutext)
+                e, uTorrentThread, global_vars_mutext, stdout_mutext)
             threads_list.append(thread)
             thread.start()
     
@@ -49,6 +50,8 @@ def main():
     for thread in threads_list:
         thread.join()
 
+    uTorrentThread.join()
+
     print("\nALL DOWNLOADS DONE")
     gui.pause()
 
@@ -58,15 +61,76 @@ def check_thread_live(thread_list):
             return True
     return False
 
+
+class UTorrentThread(Thread):
+
+    REQUEST_ADD_URL = 1
+    REQUEST_ACTION = 2
+
+    def __init__(self, api):
+        Thread.__init__(self)
+        self.name = "UTorrentAPI"
+        self.request_queue = []
+        self.request_counter = 0
+        self.request_responce = []
+        self.api = api
+        self.torrentList = []
+        self.exit = False
+        Thread.start(self)
+
+    def run(self):
+        while not self.exit:
+            self.torrentList = self.api.get_list()
+            time.sleep(1)
+            while len(self.request_queue) > 0:
+                r = self.request_queue.pop(0)
+                responce = None
+                if (r["type"] == UTorrentThread.REQUEST_ADD_URL):
+                    responce = self.api.add_url(r["url"])
+                elif (r["type"] == UTorrentThread.REQUEST_ACTION):
+                    responce = self.api.action(r["torrent"], r["action"])
+                
+                self.request_responce.append(
+                    {"id": r["id"], "responce": responce})
+                time.sleep(1)
+
+    def addRequest(self, request):
+        request["id"] = self.request_counter
+        self.request_counter = self.request_counter + 1
+        self.request_queue.append(request)
+        return request["id"]
+
+    def getRequestResponce(self, request_id):
+        while 1:
+            for r in self.request_responce:
+                if (r["id"] == request_id):
+                    responce = r["responce"]
+                    self.request_responce.remove(r)
+                    return responce
+
+    def getTorrentList(self):
+        return self.torrentList
+
+    def getTorrent(self, torrent_hash):
+        torrent_list = self.getTorrentList()
+        for torrent in torrent_list:
+            if torrent.hash.upper() == torrent_hash.upper():
+                return torrent
+
+    def join(self):
+        self.exit = True
+        Thread.join(self)
+
+
 class Episode_Downloader(Thread):
 
-    def __init__(self, episode, torrentAPI, utorrent_mutex, global_vars_mutext, stdout_mutext):
+    def __init__(self, episode, uTorrentThread, global_vars_mutext, stdout_mutext):
         Thread.__init__(self)
-        self.utorrent_mutex = utorrent_mutex
+        self.name = f"{episode.serie.name} - {episode.name}"
         self.global_vars_mutext = global_vars_mutext
         self.stdout_mutext = stdout_mutext
         self.episode = episode
-        self.torrentAPI = torrentAPI
+        self.uTorrentThread = uTorrentThread
         self.torrent = None
         self.torrent_hash = ""
         self.torrent_magnet = ""
@@ -96,7 +160,7 @@ class Episode_Downloader(Thread):
     def _search_torrent(self):
         global total_process
         tpb = TPB()
-        search_string = re.sub(r'[\"()\d]',
+        search_string = re.sub(r'\(\d{4}\)',
                                '', self.episode.serie.name)
         search_string += "S{:02d}".format(self.episode.season_number)
         search_string += "E{:02d}".format(self.episode.number)
@@ -114,30 +178,29 @@ class Episode_Downloader(Thread):
 
     def _add_download(self):
         global total_process
-        self.utorrent_mutex.acquire()
-        if not self.torrentAPI.add_url(self.torrent_magnet):
-            self.utorrent_mutex.release()
+
+        request_number = self.uTorrentThread.addRequest(
+            {"type": UTorrentThread.REQUEST_ADD_URL, "url": self.torrent_magnet})
+
+        if not self.uTorrentThread.getRequestResponce(request_number):
             with self.global_vars_mutext:
                 total_process += 100
             with self.stdout_mutext:
-                print("\rCan't add the torrent to the uTorrent download list",
+                print("\r[%s]Can't add the torrent to the uTorrent download list"%(self.name),
                     file=sys.stderr)
             return False
-
-        torrent_list = self.torrentAPI.get_list()
-        self.utorrent_mutex.release()
-
-        for torrent in torrent_list:
-            if torrent.hash.upper() == self.torrent_hash.upper():
-                self.torrent = torrent
-                return True
-        print("\rCan't find the torrent in the uTorrent download list", file=sys.stderr)
+        time.sleep(3)
+        self.torrent = self.uTorrentThread.getTorrent(
+            self.torrent_hash)
+        if self.torrent :
+            return True
+        with self.stdout_mutext:
+            print("\rCan't find the torrent in the uTorrent download list", file=sys.stderr)
         return False
 
     def _wait_for_torrent_to_start(self):
         while self.torrent.size <= 0:
-            with self.utorrent_mutex:
-                self.torrent.refresh()
+            self.torrent = self.uTorrentThread.getTorrent(self.torrent.hash)
             time.sleep(2)
 
     def _mointor_torrent(self):
@@ -148,9 +211,7 @@ class Episode_Downloader(Thread):
         last_progress_value = self.torrent.progress
 
         while (self.torrent.progress < 100):
-
-            with self.utorrent_mutex:
-                self.torrent.refresh()
+            self.torrent = self.uTorrentThread.getTorrent(self.torrent.hash)
             
             with self.global_vars_mutext:
                 total_process += (self.torrent.progress - last_progress_value)
@@ -159,13 +220,13 @@ class Episode_Downloader(Thread):
             time.sleep(1)
 
     def _remove_torrent(self):
-        self.utorrent_mutex.acquire()
-        while (not self.torrent.remove()):
-            self.utorrent_mutex.release()
-            time.sleep(2)
-            self.utorrent_mutex.acquire()
-        self.utorrent_mutex.release()
-
+        request_number = self.uTorrentThread.addRequest(
+            {"type": UTorrentThread.REQUEST_ACTION, "action": TorrentAction.REMOVE, "torrent": self.torrent})
+        if not self.uTorrentThread.getRequestResponce(request_number):
+            with self.stdout_mutext:
+                print("\rCan't add the torrent to the uTorrent download list",
+                      file=sys.stderr)
+    
     def _update_epidode_done_status(self):
         self.episode.status = Episode.STATUS_DONE
         self.episode.magnet_link = self.torrent_magnet

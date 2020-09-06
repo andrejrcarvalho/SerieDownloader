@@ -1,7 +1,7 @@
 from imdb import IMDb, IMDbError
-from utils import CmdGui as gui
-from models.serie import Serie
-from models.episode import Episode
+from . import cmd_gui as gui
+from .models import Serie
+from .models import Episode
 from datetime import datetime
 import sys
 
@@ -29,7 +29,7 @@ def getSerie(imdbid):
                 release_date = None
                 status = Episode.STATUS_PENDING
 
-                if (len(obj['original air date']) == 4):
+                if (len(obj['original air date']) < 10):
                     status = Episode.STATUS_UNDATED
                 else:
                     release_date = datetime.strptime(
@@ -41,6 +41,31 @@ def getSerie(imdbid):
                                 obj['episode'], obj['season'],release_date,None,"",serie.id,status)
                 serie.seasons[season - 1].append(episode)
         return serie
+    except IMDbError as error:
+        print(f"Imdb error:\n\t{error}")
+    except:
+        _show_errors()
+    return None
+
+def getEpisode(imdbid):
+    try:
+        ia = IMDb()
+        result = ia.get_movie(imdbid)
+
+        release_date = None
+        status = Episode.STATUS_PENDING
+
+        if (len(result['original air date']) < 10):
+            status = Episode.STATUS_UNDATED
+        else:
+            release_date = datetime.strptime(
+                result['original air date'].replace('.', ''), '%d %b %Y')
+            if (release_date < datetime.now()):
+                status = Episode.STATUS_UNLISTED
+
+        episode = Episode(result.getID(), result['title'],
+                        result['episode'], result['season'], release_date, None, "", result['episode of'].getID(), status)
+        return episode
     except IMDbError as error:
         print(f"Imdb error:\n\t{error}")
     except:

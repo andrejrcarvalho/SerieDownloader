@@ -1,5 +1,5 @@
 from time import sleep
-import os
+import os,sys
 
 def status_msg( string, newLine=False,sleepTime=1):
     print(string, end="", flush=True)
@@ -76,7 +76,10 @@ def progress( label, progress, afterLabel="", width=50):
     print(output, end="")
 
 def clear():
-    os.system('cls')
+    if (sys.platform.startswith("linux")):
+        os.system('clear')
+    else:
+        os.system('cls')
 
 def pause():
     input("Press ENTER key to continue...")

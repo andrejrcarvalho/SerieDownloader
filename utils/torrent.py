@@ -4,14 +4,22 @@ import time
 import urllib.parse
 from lxml import html
 
-class TorrentAPI(object):
+class TorrentAPI():
     
     def __init__(self, base_url, username, password):
+        if not base_url or not isinstance(base_url, str):
+            raise AttributeError("Invalid attribute parsed to base_url")
+        if not username or not isinstance(username, str):
+            raise AttributeError("Invalid attribute parsed to username")
+        if not password or not isinstance(password, str):
+            raise AttributeError("Invalid attribute parsed to password")
+
         self.base_url = base_url
         self.username = username
         self.password = password
         self.auth = requests.auth.HTTPBasicAuth(self.username, self.password)
         self.token, self.cookies = self._get_access_token()
+        self.torrent_list = []
 
     def _get_access_token(self):
         url = self.base_url + '/token.html'
@@ -26,12 +34,13 @@ class TorrentAPI(object):
                 guid = response.cookies['GUID']
                 cookies = dict(GUID=guid)
             else:
-                print("Cant't get the token from uTorrent:\n\t HTTP error code %d"%response.status_code)
+                raise RuntimeError("Cant't get the token from uTorrent:\n\t HTTP error code %d"%response.status_code)
         except requests.ConnectionError as error:
-            print(
-                F"Error while connecting to uTorrent API:\n\t{error}\nCheck if the uTorrent is started and the uri and access data are corret!", file=sys.stderr)
-        except:
-            self._show_errors()
+            raise RuntimeError(
+                F"Error while connecting to uTorrent API: \n\t{error}\nCheck if the uTorrent is started and the uri and access data are corret!")
+        except BaseException as error:
+            raise Exception(
+                f"Unexpected error while connecting to uTorrent API\n\t{error}")
 
         return token, cookies
 
@@ -54,15 +63,16 @@ class TorrentAPI(object):
             response.encoding = 'utf8'
             return response
         except requests.ConnectionError as error:
-            print(
-                F"Error while connecting to uTorrent API:\n\t{error}", file=sys.stderr)
-        except:
-            self._show_errors()
+            raise RuntimeError(f"Error while connecting to uTorrent API:\n\t{error}")
+        except BaseException as error:
+            raise Exception(
+                f"Unexpected error while connecting to uTorrent API\n\t{error}")
         return None
 
     def get_list(self):
         response = self._request({"list":1})
         if response != None and response.status_code == 200:
+            self.torrent_list = TorrentList(response.json(), self)
             return TorrentList(response.json(),self)
 
         return []
@@ -75,21 +85,30 @@ class TorrentAPI(object):
 
         return False
 
+    def action(self, torrent, action):
+
+        if not isinstance(torrent, Torrent):
+            raise AttributeError("Invalid attribute parsed to torrent")
+        elif len(torrent.hash) <= 0:
+            raise AttributeError("Torrent attribute have no valid hash")
+        elif action not in TorrentAction.get_list():
+            raise AttributeError("Invalid attribute parsed to action")
+
+        response = self._request(
+            {"action": action, "hash": torrent.hash})
+        if response != None and response.status_code == 200:
+            return True
+
+        return False
+
     def is_authenticated(self):
         if len(self.token) <= 0 or len(self.cookies) <= 0:
             return False
         return True
 
-    def _show_errors(self):
-        print(
-            f"Unexpected error while getting IMDB data:", file=sys.stderr)
-        for error in sys.exc_info():
-            print(f"\t{error}", file=sys.stderr)
+class Torrent():
 
-class Torrent(TorrentAPI):
-
-    def __init__(self, json,torrentApi):
-        super().__init__(torrentApi.base_url, torrentApi.username, torrentApi.password)
+    def __init__(self, json, torrentApi):
         self.hash = json[0]
         self.status = Status(json[1])
         self.name = json[2]
@@ -111,71 +130,32 @@ class Torrent(TorrentAPI):
         self.remaining = json[18]
         self.download_folder = json[26]
 
-    def start(self):
-        return self._action('start')
-
-    def stop(self):
-        return self._action('stop')
-
-    def pause(self):
-        return self._action('pause')
-
-    def unpause(self):
-        return self._action('unpause')
-
-    def forcestart(self):
-        return self._action('forcestart')
-
-    def recheck(self):
-        return self._action('recheck')
-
-    def remove(self):
-        return self._action('remove')
-
-    def removeda(self):
-        return self._action('removeda')
-
-    def queuebottom(self):
-        return self._action('queuebottom')
-
-    def queuedown(self):
-        return self._action('queuedown')
-
-    def queuetop(self):
-        return self._action('queuetop')
-
-    def queueup(self):
-        return self._action('queueup')
-
-    def get_files(self):
-        response = self._request({"action": "getfiles", "hash": self.hash})
-        if response != None and response.status_code == 200:
-            data = response.json()
-            if "files" not in data:
-                return []
-            return data["files"][1]
-        return False
-
-    def refresh(self):
-        torrentlist = self.get_list()
-        for torrent in torrentlist:
-            if (torrent.hash == self.hash):
-                self.__dict__ = torrent.__dict__
-        
-    def _action(self, action):
-        response = self._request({"action":action,"hash":self.hash})
-        if response != None and response.status_code == 200:
-            return True
-        return False
-
     def __str__(self):
         return f"{self.name} - {self.progress}%"
+
+class TorrentAction():
+    START = 'start'
+    STOP = 'stop'
+    PAUSE = 'pause'
+    UNPAUSE = 'unpause'
+    FORCE_START = 'forcestart'
+    RECHECK = 'recheck'
+    REMOVE = 'remove'
+    REMOVE_ALL = 'removeda'
+    QUEUE_BOTTOM = 'queuebottom'
+    QUEUE_DOWN = 'queuedown'
+    QUEUE_STOP = 'queuetop'
+    QUEUE_UP = 'queueup'
+
+    @staticmethod
+    def get_list():
+        return [TorrentAction.START, TorrentAction.STOP, TorrentAction.PAUSE, TorrentAction.UNPAUSE, TorrentAction.FORCE_START, TorrentAction.RECHECK, TorrentAction.REMOVE, TorrentAction.REMOVE_ALL, TorrentAction.QUEUE_BOTTOM, TorrentAction.QUEUE_DOWN, TorrentAction.QUEUE_STOP, TorrentAction.QUEUE_UP]
 
 class TorrentList(object):
     def __init__(self, json, torrentApi):
         self.build = json['build']
         self.labels = [Label(x) for x in json['label']]
-        self.torrents = [Torrent(x, torrentApi) for x in json['torrents']]
+        self.torrents = [Torrent(x,torrentApi) for x in json['torrents']]
         self.torrent_cache_id = json['torrentc']
         self.index = -1
 

@@ -1,9 +1,9 @@
 import json
 import follow
-import download, os.path
-from utils import Database
-from utils import Settings
-from utils import CmdGui as gui
+import update, download, os.path
+from utils.database import Database
+from utils.settings import Settings
+import utils.cmd_gui as gui
 
 def start_modules():
     gui.header("Series Downloader", margin=20)
@@ -28,7 +28,7 @@ def main_menu():
         if option == 1:
             download.main()
         elif option == 2:
-            gui.progress("Updating", 1, afterLabel=f" {1}")
+            update.main()
         elif option == 3:
             follow.main_menu()
 

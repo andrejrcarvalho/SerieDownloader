@@ -1,6 +1,6 @@
-from utils import CmdGui as gui
-from utils import Imdb
-from models import Serie
+import utils.cmd_gui as gui
+import utils.imdb as Imdb
+from utils.models import Serie
 import math
 
 def main_menu():
