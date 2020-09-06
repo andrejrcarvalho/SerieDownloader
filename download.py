@@ -189,14 +189,11 @@ class Episode_Downloader(Thread):
                 print("\r[%s]Can't add the torrent to the uTorrent download list"%(self.name),
                     file=sys.stderr)
             return False
-        time.sleep(3)
-        self.torrent = self.uTorrentThread.getTorrent(
-            self.torrent_hash)
-        if self.torrent :
-            return True
-        with self.stdout_mutext:
-            print("\rCan't find the torrent in the uTorrent download list", file=sys.stderr)
-        return False
+
+        while not self.torrent:
+            self.torrent = self.uTorrentThread.getTorrent(
+                self.torrent_hash)
+        return True
 
     def _wait_for_torrent_to_start(self):
         while self.torrent.size <= 0:

@@ -34,8 +34,6 @@ def list_series():
         for i in range(t, 8):
             output += "\t"
         output += f"{s.status}\n"
-        for se in range(len(s.seasons)):
-            output += f"  └>\t{se+1}\t\t\t\t\t\t{len(s.seasons[se])}\n"
     print(output.expandtabs(4))
     gui.pause()
     pass
@@ -45,8 +43,7 @@ def add_new_series():
     imdbId = ""
     while(option != 0):
         option = gui.menu("Add new serie", [
-            "From IMDB",
-            "From Trak TV"],
+            "From IMDB"],
             "Back", 10)
         if (option == 1):
             imdbId = Imdb.search_serie()

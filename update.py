@@ -11,7 +11,7 @@ def main():
         p = (i * 100)/len(results)
         gui.progress("Downloading..", p, "{:.2f}%".format(p))
         episode = Imdb.getEpisode(e.id)
-        if (e.status != Episode.STATUS_UNDATED):
+        if (episode.status != Episode.STATUS_UNLISTED):
             episode.status = e.status
         episode.save()
         i = i + 1
