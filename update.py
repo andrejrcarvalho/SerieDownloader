@@ -5,7 +5,7 @@ import utils.imdb as Imdb
 def main():
     gui.header("Series Update", margin=20)
 
-    results = Episode.getList([Episode.STATUS_PENDING, Episode.STATUS_UNDATED])
+    results = Episode.getList([Episode.STATUS_UNDATED, Episode.STATUS_FAIL])
     i = 1
     for e in results:
         p = (i * 100)/len(results)

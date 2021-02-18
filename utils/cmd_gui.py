@@ -13,10 +13,10 @@ def menu( title, options, backmsg, margin=0):
     while response not in range(0, len(options)+1):
         clear()
         width = len(title)
-        options_string = ""
-        for option in options:
-            if (width < (len(option)+4)):
-                width = (len(option)+4)
+        for i in range(len(options)):
+            opt_len = len(f"({i+1})\t{options[i]}".expandtabs())
+            if (width < opt_len):
+                width = opt_len
         width += margin
         output = "╔"
         for i in range(width):
@@ -38,17 +38,19 @@ def menu( title, options, backmsg, margin=0):
             output += "║"
             for i in range(int(margin/2)):
                 output += " "
-            output += f"({op_number}) {option}"
+            opt_string = f"({op_number})\t{option}".expandtabs()
+            output += opt_string
             op_number += 1
-            for i in range(int(width - (margin/2 + len(option)+4))):
+            for i in range(int(width - (margin/2 + len(opt_string)))):
                 output += " "
             output += "║\n"
 
         output += "║"
         for i in range(int(margin / 2)):
             output += " "
-        output += f"(0) {backmsg}"
-        for i in range(int(width - (margin/2 + len(backmsg)+4))):
+        exit_string = f"(0)\t{backmsg}".expandtabs()
+        output += exit_string
+        for i in range(int(width - (margin/2 + len(exit_string)))):
             output += " "
         output += "║\n╚"
         for i in range(width):
