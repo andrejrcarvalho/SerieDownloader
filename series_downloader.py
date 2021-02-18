@@ -15,7 +15,7 @@ def start_modules():
     Database(Settings.getInstance().database_file)
 
 
-def main_menu():
+def main():
     option = -1
     while option != 0:
 
@@ -30,8 +30,8 @@ def main_menu():
         elif option == 2:
             update.main()
         elif option == 3:
-            follow.main_menu()
+            follow.main()
 
 if __name__ == "__main__":
     start_modules()
-    main_menu()
+    main()

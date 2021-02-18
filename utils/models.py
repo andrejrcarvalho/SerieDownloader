@@ -241,6 +241,7 @@ class Serie:
         if value not in (Serie.STATUS_ENABLE, Serie.STATUS_DISABLE):
             raise ValueError("Invalid given value Episode<status>")
         self._status = value
+        
     def loadSeasons(self, status=[]):
         self.seasons = [list()] * self.number_seasons
 

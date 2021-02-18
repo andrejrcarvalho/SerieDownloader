@@ -165,7 +165,7 @@ class Episode_Downloader(Thread):
         search_string += "S{:02d}".format(self.episode.season_number)
         search_string += "E{:02d}".format(self.episode.number)
 
-        if tpb.search(search_string, 208) <= 0:
+        if tpb.search(search_string, 208) <= 0 :
             with self.global_vars_mutext:
                 total_process += 100
             with self.stdout_mutext:
@@ -253,8 +253,9 @@ class Episode_Downloader(Thread):
                         self.episode.number,
                         self.episode.name,
                         file_extension)
-                    os.rename(os.path.join(root, file),
-                              os.path.join(folder, filename))
+                    source = os.path.join(root, file)
+                    destination = os.path.join(folder, filename)
+                    os.rename(source,destination)
                     shutil.rmtree(self.torrent.download_folder)
                     return
         
