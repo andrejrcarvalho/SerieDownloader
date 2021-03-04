@@ -1,6 +1,6 @@
 import json
 import follow
-import update, download, os.path
+import update, download, os.path, sys
 from utils.database import Database
 from utils.settings import Settings
 import utils.cmd_gui as gui
@@ -34,4 +34,11 @@ def main():
 
 if __name__ == "__main__":
     start_modules()
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print('\nExited!')
+        try:
+            sys.exit(0)
+        except SystemExit:
+            os._exit(0)

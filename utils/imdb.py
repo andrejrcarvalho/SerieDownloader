@@ -29,7 +29,7 @@ def getSerie(imdbid):
                 release_date = None
                 status = Episode.STATUS_PENDING
 
-                if (len(obj['original air date']) < 10):
+                if ('original air date' not in obj or len(obj['original air date']) < 10):
                     status = Episode.STATUS_UNDATED
                 else:
                     release_date = datetime.strptime(

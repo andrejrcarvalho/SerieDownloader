@@ -138,7 +138,7 @@ def select_episode(serie, season):
         episodes_strings = []
         for i in range(len(episodes)):
             episode = episodes[i]
-            episodes_strings.append(f"{episode.name}\t{episode.status}")
+            episodes_strings.append(f"[{episode.number}] - {episode.name}\t{episode.status}")
         gui.clear()
         option = gui.menu(f"{serie.name} -> Season {season+1}",
             episodes_strings, "Exit", margin=10)
